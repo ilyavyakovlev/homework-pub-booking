@@ -124,11 +124,20 @@ def verify_dataflow(flyer_content: str) -> IntegrityResult:
     facts_to_check.extend(extract_temperature_facts(flyer_content))
     facts_to_check.extend(extract_condition_facts(flyer_content))
 
-    # De-dupe while preserving order
+    # Prefer structured data-testid values when the flyer is HTML — these give
+    # us string facts (venue name, address, date) that the regex extractors
+    # above would miss entirely. Values are appended after the regex facts so
+    # that numeric/condition facts are still caught if testids are absent.
+    testid_facts = extract_testid_facts(flyer_content)
+    facts_to_check.extend(testid_facts.values())
+
+    # De-dupe while preserving order. Normalise using the same strip as
+    # fact_appears_in_log so that "£540" and "540" collapse to the same key
+    # rather than being checked twice.
     seen: set[str] = set()
     deduped: list[str] = []
     for f in facts_to_check:
-        key = f.lower().strip()
+        key = f.lower().strip("£°c ")
         if key not in seen:
             seen.add(key)
             deduped.append(f)

@@ -78,7 +78,7 @@ starter/edinburgh_research/
 │   └── catering.json
 └── run.py            # runner — read it but don't modify
 ```
-
+ 
 ### Implement in this order
 
 1. **`venue_search(near, party_size, budget_max_gbp)`** — read
