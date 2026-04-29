@@ -105,6 +105,8 @@ async def run_scenario(real: bool, auto: bool) -> int:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     real = "--real" in sys.argv
     auto = "--auto" in sys.argv
     if auto and not real:
