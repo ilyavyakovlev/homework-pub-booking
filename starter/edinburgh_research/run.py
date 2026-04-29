@@ -46,9 +46,7 @@ class _FixedPlanner:
 
     name = "fixed"
 
-    async def plan(
-        self, task: str, context: dict, session: Session
-    ) -> list[Subgoal]:
+    async def plan(self, task: str, context: dict, session: Session) -> list[Subgoal]:
         return [
             Subgoal(
                 id="sg_1",
@@ -286,11 +284,7 @@ async def run_scenario(real: bool) -> int:
             planner_model = executor_model = "fake"
 
         tools = build_tool_registry(session)
-        planner = (
-            _FixedPlanner()
-            if real
-            else DefaultPlanner(model=planner_model, client=client)
-        )
+        planner = _FixedPlanner() if real else DefaultPlanner(model=planner_model, client=client)
         half = LoopHalf(
             planner=planner,
             executor=DefaultExecutor(model=executor_model, client=client, tools=tools),  # type: ignore[arg-type]
@@ -379,6 +373,7 @@ async def run_scenario(real: bool) -> int:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     real = "--real" in sys.argv
     sys.exit(asyncio.run(run_scenario(real=real)))
 

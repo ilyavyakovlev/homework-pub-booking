@@ -250,7 +250,7 @@ make narrate-latest   # see the state transitions
 Expected narration:
 
 ```
---:--:--  🔁  Bridge round 1 — starting loop half
+--:--:--  🔁  Bridge round 1 — starting loop haexlf
 --:--:--  ↪️   State: loop → structured  (round 1)
 --:--:--  ↪️   State: structured → loop  (round 1)   ← rejection!
 --:--:--  🔁  Bridge round 2 — starting loop half

@@ -39,11 +39,11 @@ def _load_fixture(filename: str) -> object:
     path = _SAMPLE_DATA / filename
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
+    except FileNotFoundError as err:
         raise ToolError(
             "SA_TOOL_DEPENDENCY_MISSING",
             f"Required fixture '{filename}' not found at {path}",
-        )
+        ) from err
 
 
 # ---------------------------------------------------------------------------
@@ -155,11 +155,15 @@ def get_weather(city: str, date: str) -> ToolResult:
         # whether to retry with a different city or surface the error to the user.
         err = ToolError(
             "SA_TOOL_INVALID_INPUT",
-            f"City '{city}' not found in weather fixture. "
-            f"Available: {list(weather_data.keys())}",
+            f"City '{city}' not found in weather fixture. Available: {list(weather_data.keys())}",
         )
         record_tool_call("get_weather", {"city": city, "date": date}, {})
-        return ToolResult(success=False, output={}, summary=f"get_weather({city!r}, {date!r}): city not found", error=err)
+        return ToolResult(
+            success=False,
+            output={},
+            summary=f"get_weather({city!r}, {date!r}): city not found",
+            error=err,
+        )
 
     day_data = city_data.get(date)
 
@@ -168,11 +172,15 @@ def get_weather(city: str, date: str) -> ToolResult:
         # or the date is simply outside the scripted range.
         err = ToolError(
             "SA_TOOL_INVALID_INPUT",
-            f"Date '{date}' not found for city '{city}'. "
-            f"Available dates: {list(city_data.keys())}",
+            f"Date '{date}' not found for city '{city}'. Available dates: {list(city_data.keys())}",
         )
         record_tool_call("get_weather", {"city": city, "date": date}, {})
-        return ToolResult(success=False, output={}, summary=f"get_weather({city!r}, {date!r}): date not found", error=err)
+        return ToolResult(
+            success=False,
+            output={},
+            summary=f"get_weather({city!r}, {date!r}): date not found",
+            error=err,
+        )
 
     # Augment the raw fixture record with the lookup keys so callers
     # don't have to remember what they asked for.
@@ -232,32 +240,48 @@ def calculate_cost(
     if catering_tier not in base_rates:
         err = ToolError(
             "SA_TOOL_INVALID_INPUT",
-            f"Unknown catering_tier '{catering_tier}'. "
-            f"Valid options: {list(base_rates.keys())}",
+            f"Unknown catering_tier '{catering_tier}'. Valid options: {list(base_rates.keys())}",
         )
         record_tool_call(
             "calculate_cost",
-            {"venue_id": venue_id, "party_size": party_size,
-             "duration_hours": duration_hours, "catering_tier": catering_tier},
+            {
+                "venue_id": venue_id,
+                "party_size": party_size,
+                "duration_hours": duration_hours,
+                "catering_tier": catering_tier,
+            },
             {},
         )
-        return ToolResult(success=False, output={}, summary=f"calculate_cost({venue_id!r}): unknown catering tier", error=err)
+        return ToolResult(
+            success=False,
+            output={},
+            summary=f"calculate_cost({venue_id!r}): unknown catering tier",
+            error=err,
+        )
 
     # --- Validate venue_id and retrieve venue-level fixed costs ---
     venue_map = {v["id"]: v for v in venues}
     if venue_id not in venue_map:
         err = ToolError(
             "SA_TOOL_INVALID_INPUT",
-            f"Unknown venue_id '{venue_id}'. "
-            f"Valid ids: {list(venue_map.keys())}",
+            f"Unknown venue_id '{venue_id}'. Valid ids: {list(venue_map.keys())}",
         )
         record_tool_call(
             "calculate_cost",
-            {"venue_id": venue_id, "party_size": party_size,
-             "duration_hours": duration_hours, "catering_tier": catering_tier},
+            {
+                "venue_id": venue_id,
+                "party_size": party_size,
+                "duration_hours": duration_hours,
+                "catering_tier": catering_tier,
+            },
             {},
         )
-        return ToolResult(success=False, output={}, summary=f"calculate_cost({venue_id!r}): unknown venue", error=err)
+        return ToolResult(
+            success=False,
+            output={},
+            summary=f"calculate_cost({venue_id!r}): unknown venue",
+            error=err,
+        )
 
     venue = venue_map[venue_id]
     hire_fee = venue.get("hire_fee_gbp", 0)
@@ -272,11 +296,20 @@ def calculate_cost(
         )
         record_tool_call(
             "calculate_cost",
-            {"venue_id": venue_id, "party_size": party_size,
-             "duration_hours": duration_hours, "catering_tier": catering_tier},
+            {
+                "venue_id": venue_id,
+                "party_size": party_size,
+                "duration_hours": duration_hours,
+                "catering_tier": catering_tier,
+            },
             {},
         )
-        return ToolResult(success=False, output={}, summary=f"calculate_cost({venue_id!r}): missing venue modifier", error=err)
+        return ToolResult(
+            success=False,
+            output={},
+            summary=f"calculate_cost({venue_id!r}): missing venue modifier",
+            error=err,
+        )
 
     # --- Core cost formula ---
     base_per_head: int = base_rates[catering_tier]
@@ -315,8 +348,12 @@ def calculate_cost(
 
     record_tool_call(
         "calculate_cost",
-        {"venue_id": venue_id, "party_size": party_size,
-         "duration_hours": duration_hours, "catering_tier": catering_tier},
+        {
+            "venue_id": venue_id,
+            "party_size": party_size,
+            "duration_hours": duration_hours,
+            "catering_tier": catering_tier,
+        },
         output,
     )
 
@@ -366,7 +403,11 @@ def generate_flyer(session: Session, event_details: dict) -> ToolResult:
 
     # Format monetary values with the £ prefix the integrity regex expects.
     total_str = f"£{total_gbp}" if isinstance(total_gbp, int) else str(total_gbp)
-    deposit_str = f"£{deposit_required_gbp}" if isinstance(deposit_required_gbp, int) else str(deposit_required_gbp)
+    deposit_str = (
+        f"£{deposit_required_gbp}"
+        if isinstance(deposit_required_gbp, int)
+        else str(deposit_required_gbp)
+    )
 
     # Format temperature with the °C suffix so extract_temperature_facts picks it up.
     temp_str = f"{temperature_c}°C" if isinstance(temperature_c, int) else str(temperature_c)
