@@ -21,7 +21,7 @@ from sovereign_agent.errors import ToolError
 from sovereign_agent.session.directory import Session
 from sovereign_agent.tools.registry import ToolRegistry, ToolResult, _RegisteredTool
 
-from .integrity import record_tool_call
+from .integrity import _TOOL_CALL_LOG, record_tool_call
 
 _SAMPLE_DATA = Path(__file__).parent / "sample_data"
 
@@ -103,6 +103,23 @@ def venue_search(near: str, party_size: int, budget_max_gbp: int = 1000) -> Tool
         {"near": near, "party_size": party_size, "budget_max_gbp": budget_max_gbp},
         output,
     )
+
+    # Spiral detection — Qwen3-32B instruct tends to retry venue_search
+    # with escalating params when it gets 0 results, never reaching the
+    # other tools. After 2 successful calls the LLM has enough data; any
+    # further call is a loop. Count AFTER logging so this call is included.
+    search_count = sum(1 for r in _TOOL_CALL_LOG if r.tool_name == "venue_search")
+    if search_count >= 3:
+        return ToolResult(
+            success=False,
+            output={"error": "too_many_searches", "call_count": search_count},
+            summary=(
+                "STOP calling venue_search. "
+                f"You have already searched {search_count} times. "
+                "Use the results you already have and proceed to "
+                "get_weather, calculate_cost, and generate_flyer."
+            ),
+        )
 
     return ToolResult(
         success=True,

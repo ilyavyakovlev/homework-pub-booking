@@ -26,12 +26,56 @@ from sovereign_agent._internal.llm_client import (
 from sovereign_agent._internal.paths import example_sessions_dir
 from sovereign_agent.executor import DefaultExecutor
 from sovereign_agent.halves.loop import LoopHalf
-from sovereign_agent.planner import DefaultPlanner
-from sovereign_agent.session.directory import create_session
+from sovereign_agent.planner import DefaultPlanner, Subgoal
+from sovereign_agent.session.directory import Session, create_session
 from sovereign_agent.tickets.ticket import list_tickets
 
 from starter.edinburgh_research.integrity import clear_log, verify_dataflow
 from starter.edinburgh_research.tools import build_tool_registry
+
+
+class _FixedPlanner:
+    """Returns one pre-built subgoal instead of asking the LLM to plan.
+
+    DefaultPlanner creates one subgoal per tool call. Each subgoal runs in
+    a fresh executor conversation with no memory of previous results, so
+    calculate_cost and generate_flyer cannot use venue_search / get_weather
+    outputs. A single subgoal keeps all tool calls in one ReAct loop where
+    every result stays in the conversation context.
+    """
+
+    name = "fixed"
+
+    async def plan(
+        self, task: str, context: dict, session: Session
+    ) -> list[Subgoal]:
+        return [
+            Subgoal(
+                id="sg_1",
+                description=(
+                    "Call all four tools in sequence, then complete the task.\n"
+                    "Step 1: venue_search(near='Haymarket', party_size=6,"
+                    " budget_max_gbp=800)\n"
+                    "Step 2: get_weather(city='edinburgh', date='2026-04-25')\n"
+                    "Step 3: calculate_cost(venue_id='haymarket_tap',"
+                    " party_size=6, duration_hours=3,"
+                    " catering_tier='bar_snacks')\n"
+                    "Step 4: generate_flyer(event_details={venue_name,"
+                    " venue_address, date='2026-04-25', time='19:30',"
+                    " party_size=6, condition, temperature_c, total_gbp,"
+                    " deposit_required_gbp}) — populate from steps 1-3\n"
+                    "Step 5: complete_task(result={'flyer':"
+                    " 'workspace/flyer.html'})"
+                ),
+                success_criterion="workspace/flyer.html exists",
+                estimated_tool_calls=5,
+                depends_on=[],
+                assigned_half="loop",
+            )
+        ]
+
+    def discover(self) -> dict:
+        return {"name": self.name, "kind": "planner"}
 
 
 def _build_fake_client() -> FakeLLMClient:
@@ -242,12 +286,46 @@ async def run_scenario(real: bool) -> int:
             planner_model = executor_model = "fake"
 
         tools = build_tool_registry(session)
+        planner = (
+            _FixedPlanner()
+            if real
+            else DefaultPlanner(model=planner_model, client=client)
+        )
         half = LoopHalf(
-            planner=DefaultPlanner(model=planner_model, client=client),
+            planner=planner,
             executor=DefaultExecutor(model=executor_model, client=client, tools=tools),  # type: ignore[arg-type]
         )
 
-        result = await half.run(session, {"task": "research Edinburgh venue and write flyer"})
+        result = await half.run(
+            session,
+            {
+                "task": (
+                    "Research an Edinburgh pub and produce an HTML event flyer.\n\n"
+                    "Context:\n"
+                    "  - party size: 6\n"
+                    "  - date: 2026-04-25 (a Saturday)\n"
+                    "  - time: 19:30\n"
+                    "  - area: near Haymarket station, Edinburgh\n\n"
+                    "REQUIRED tool calls (call them in this exact order):\n"
+                    "  1. venue_search(near='Haymarket', party_size=6, budget_max_gbp=800)\n"
+                    "     → the only matching venue is haymarket_tap\n"
+                    "  2. get_weather(city='edinburgh', date='2026-04-25')\n"
+                    "  3. calculate_cost(venue_id='haymarket_tap', party_size=6,\n"
+                    "                    duration_hours=3, catering_tier='bar_snacks')\n"
+                    "  4. generate_flyer(event_details={venue_name, venue_address, date,\n"
+                    "                    time, party_size, condition, temperature_c,\n"
+                    "                    total_gbp, deposit_required_gbp})\n"
+                    "  5. complete_task(result={'flyer': 'workspace/flyer.html'})\n\n"
+                    "HARD RULES:\n"
+                    "  - venue_id for calculate_cost is 'haymarket_tap' (from venue_search result).\n"
+                    "  - Do NOT call venue_search more than once.\n"
+                    "  - Do NOT call complete_task until generate_flyer has been called and\n"
+                    "    workspace/flyer.html exists.\n"
+                    "  - Do NOT use handoff_to_structured; complete the full sequence yourself.\n"
+                    "The scenario is graded by the existence of workspace/flyer.html."
+                )
+            },
+        )
         print(f"\nLoop half outcome: {result.next_action}")
         print(f"  summary: {result.summary}")
 
