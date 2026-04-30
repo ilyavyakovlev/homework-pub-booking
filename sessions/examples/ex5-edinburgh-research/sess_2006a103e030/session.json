@@ -1,0 +1,31 @@
+{
+  "session_id": "sess_2006a103e030",
+  "version": 1,
+  "created_at": "2026-04-30T07:47:12.110982+00:00",
+  "updated_at": "2026-04-30T07:47:13.837955+00:00",
+  "scenario": "edinburgh-research",
+  "state": "executing",
+  "user_id": null,
+  "current_half": "loop",
+  "planner": {
+    "subgoals": [
+      {
+        "id": "sg_1",
+        "description": "Call all four tools in sequence, then complete the task.\nStep 1: venue_search(near='Haymarket', party_size=6, budget_max_gbp=800)\nStep 2: get_weather(city='edinburgh', date='2026-04-25')\nStep 3: calculate_cost(venue_id='haymarket_tap', party_size=6, duration_hours=3, catering_tier='bar_snacks')\nStep 4: generate_flyer(event_details={venue_name, venue_address, date='2026-04-25', time='19:30', party_size=6, condition, temperature_c, total_gbp, deposit_required_gbp}) \u2014 populate from steps 1-3\nStep 5: complete_task(result={'flyer': 'workspace/flyer.html'})",
+        "success_criterion": "workspace/flyer.html exists",
+        "estimated_tool_calls": 5,
+        "depends_on": [],
+        "assigned_half": "loop",
+        "status": "pending"
+      }
+    ]
+  },
+  "executor": {},
+  "structured": {},
+  "memory": {},
+  "handoff_history": [],
+  "bare_mode": false,
+  "config_overrides": {},
+  "result": null,
+  "resumed_from": null
+}
