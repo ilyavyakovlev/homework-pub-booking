@@ -412,7 +412,6 @@ Fresh clone reports:
 ```
 24 passed, 3 skipped in 0.4s
 ```
-
 The 3 skips are `test_verify_dataflow`, `test_normalise_booking_payload`,
 and `test_ex6_validates_party_size`. Each skip triggers when your TODO
 raises `NotImplementedError`. **Your goal is to turn all three into
