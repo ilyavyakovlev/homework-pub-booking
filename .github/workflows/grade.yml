@@ -28,7 +28,7 @@ jobs:
     environment:
       name: grading
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
 
     steps:
