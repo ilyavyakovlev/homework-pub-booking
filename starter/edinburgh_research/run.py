@@ -266,15 +266,18 @@ async def run_scenario(real: bool) -> int:
         print(f"  dir: {session.directory}")
 
         if real:
+            import os
+
             from sovereign_agent.config import Config
 
             cfg = Config.from_env()
             print(f"  LLM: {cfg.llm_base_url} (live)")
             print(f"  planner:  {cfg.llm_planner_model}")
             print(f"  executor: {cfg.llm_executor_model}")
+            api_key = os.environ.get(cfg.llm_api_key_env) or cfg.llm_api_key_env
             client = OpenAICompatibleClient(
                 base_url=cfg.llm_base_url,
-                api_key_env=cfg.llm_api_key_env,
+                api_key=api_key,
             )
             planner_model = cfg.llm_planner_model
             executor_model = cfg.llm_executor_model

@@ -168,7 +168,7 @@ test-all: ## Run public + private tests (private tests only exist in the grader 
 
 .PHONY: check-submit
 check-submit: ## Run the local grader (advisory — CI at deadline is the authoritative grade)
-	@$(UV) run python -m grader.check_submit
+	@PYTHONUTF8=1 $(UV) run python -m grader.check_submit
 
 # ─── per-exercise targets ───────────────────────────────────────────────
 
