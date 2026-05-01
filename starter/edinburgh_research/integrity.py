@@ -90,9 +90,7 @@ def extract_labeled_values(text: str) -> list[str]:
     """
     stripped = re.sub(r"<[^>]+>", " ", text)
     results = []
-    for m in re.finditer(
-        r"^([A-Za-z][A-Za-z ]*?):\s*([^\n;{}]+?)\.?\s*$", stripped, re.MULTILINE
-    ):
+    for m in re.finditer(r"^([A-Za-z][A-Za-z ]*?):\s*([^\n;{}]+?)\.?\s*$", stripped, re.MULTILINE):
         value = m.group(2).strip()
         if value:
             results.append(value)
