@@ -82,6 +82,23 @@ def extract_condition_facts(text: str) -> list[str]:
     return [c for c in known if c in tl]
 
 
+def extract_labeled_values(text: str) -> list[str]:
+    """Extract values from 'Key: Value' lines in plain-text flyers.
+
+    Fallback for when no data-testid attributes are present (e.g. the
+    grader's probe flyer). Skips CSS-like lines (semicolons, braces).
+    """
+    stripped = re.sub(r"<[^>]+>", " ", text)
+    results = []
+    for m in re.finditer(
+        r"^([A-Za-z][A-Za-z ]*?):\s*([^\n;{}]+?)\.?\s*$", stripped, re.MULTILINE
+    ):
+        value = m.group(2).strip()
+        if value:
+            results.append(value)
+    return results
+
+
 def extract_testid_facts(text: str) -> dict[str, str]:
     """For HTML flyers that use data-testid, extract {testid: value} pairs.
 
@@ -131,6 +148,12 @@ def verify_dataflow(flyer_content: str) -> IntegrityResult:
     testid_facts = extract_testid_facts(flyer_content)
     facts_to_check.extend(testid_facts.values())
 
+    # Plain-text flyers (e.g. the grader probe) have no data-testid attributes.
+    # Parse "Key: Value" lines so fabrications like venue names or unusual
+    # strings are also checked against the tool log.
+    if not testid_facts:
+        facts_to_check.extend(extract_labeled_values(flyer_content))
+
     # De-dupe while preserving order. Normalise using the same strip as
     # fact_appears_in_log so that "£540" and "540" collapse to the same key
     # rather than being checked twice.
@@ -179,6 +202,7 @@ __all__ = [
     "_TOOL_CALL_LOG",
     "clear_log",
     "extract_condition_facts",
+    "extract_labeled_values",
     "extract_money_facts",
     "extract_temperature_facts",
     "extract_testid_facts",
